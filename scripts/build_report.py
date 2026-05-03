@@ -1,0 +1,411 @@
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Inches, Pt
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "source"))
+
+from simulation import Scenario, monte_carlo_patrol, monte_carlo_queue, recognition_metrics  # noqa: E402
+
+
+TITLE = "大型活动安防中的随机到达、排队拥堵与巡逻发现：高阶叙事性模拟"
+DOCX_NAME = "midterm_report.docx"
+
+
+def set_run_font(run, size=12, bold=False, name="宋体"):
+    run.font.name = "Times New Roman"
+    run.font.size = Pt(size)
+    run.bold = bold
+    run._element.rPr.rFonts.set(qn("w:eastAsia"), name)
+
+
+def add_paragraph(doc, text="", style=None, align=None, first_line=True):
+    paragraph = doc.add_paragraph(style=style)
+    if align is not None:
+        paragraph.alignment = align
+    fmt = paragraph.paragraph_format
+    fmt.line_spacing = 1.5
+    fmt.space_after = Pt(6)
+    if first_line:
+        fmt.first_line_indent = Cm(0.74)
+    run = paragraph.add_run(text)
+    set_run_font(run)
+    return paragraph
+
+
+def add_heading(doc, text, level=1):
+    paragraph = doc.add_paragraph()
+    paragraph.paragraph_format.line_spacing = 1.5
+    paragraph.paragraph_format.space_before = Pt(8)
+    paragraph.paragraph_format.space_after = Pt(8)
+    run = paragraph.add_run(text)
+    if level == 1:
+        set_run_font(run, size=14, bold=True, name="黑体")
+    else:
+        set_run_font(run, size=13, bold=True, name="黑体")
+    return paragraph
+
+
+def add_formula(doc, text):
+    paragraph = doc.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.line_spacing = 1.5
+    run = paragraph.add_run(text)
+    set_run_font(run, size=12, name="宋体")
+    return paragraph
+
+
+def add_caption(doc, text):
+    paragraph = doc.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.space_after = Pt(8)
+    run = paragraph.add_run(text)
+    set_run_font(run, size=10.5, name="宋体")
+    return paragraph
+
+
+def add_table(doc, headers, rows):
+    table = doc.add_table(rows=1, cols=len(headers))
+    table.style = "Table Grid"
+    hdr = table.rows[0].cells
+    for i, header in enumerate(headers):
+        hdr[i].text = header
+        for paragraph in hdr[i].paragraphs:
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in paragraph.runs:
+                set_run_font(run, size=10.5, bold=True, name="黑体")
+    for row in rows:
+        cells = table.add_row().cells
+        for i, value in enumerate(row):
+            cells[i].text = str(value)
+            for paragraph in cells[i].paragraphs:
+                paragraph.paragraph_format.line_spacing = 1.2
+                for run in paragraph.runs:
+                    set_run_font(run, size=10.5)
+    doc.add_paragraph()
+    return table
+
+
+def set_cell_shading(cell, fill):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:fill"), fill)
+    tc_pr.append(shd)
+
+
+def style_document(doc):
+    section = doc.sections[0]
+    section.top_margin = Cm(2.54)
+    section.bottom_margin = Cm(2.54)
+    section.left_margin = Cm(2.54)
+    section.right_margin = Cm(2.54)
+    normal = doc.styles["Normal"]
+    normal.font.name = "Times New Roman"
+    normal._element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+    normal.font.size = Pt(12)
+
+
+def pct(value):
+    return f"{value * 100:.1f}%"
+
+
+def main():
+    figures = ROOT / "report" / "figures"
+    output = ROOT / "report" / DOCX_NAME
+    metrics = json.loads((figures / "metrics.json").read_text(encoding="utf-8"))
+
+    scenario = Scenario()
+    cases = [
+        ("基准方案", scenario),
+        ("错峰入场", Scenario(peak_concentration=0.82)),
+        ("增开通道", Scenario(gates=44)),
+        ("组合优化", Scenario(peak_concentration=0.82, gates=44, patrols=8, smart_bias=0.85, false_alarm=0.0022)),
+    ]
+    case_rows = []
+    for name, case in cases:
+        q = monte_carlo_queue(case, trials=300, seed=88000)
+        patrol = monte_carlo_patrol(case.patrols, case.smart_bias, trials=300, seed=99000)
+        rec = recognition_metrics(case)
+        case_rows.append(
+            [
+                name,
+                case.gates,
+                f"{case.peak_concentration:.2f}",
+                pct(q["risk_probability"]),
+                f"{q['max_queue_mean']:.0f}",
+                f"{q['avg_wait_mean']:.2f}",
+                f"{patrol['median_hit_time']:.0f}",
+                pct(rec["posterior_true_given_alert"]),
+            ]
+        )
+
+    doc = Document()
+    style_document(doc)
+
+    for _ in range(3):
+        doc.add_paragraph()
+    cover = [
+        ("2024 年《概率论与随机过程》小组作业", 18, True),
+        ("", 12, False),
+        (f"题目：{TITLE}", 18, True),
+        ("", 12, False),
+        ("学院：*****院", 14, False),
+        ("年级：2023级", 14, False),
+        ("小组编号：第 ** 组", 14, False),
+        ("成员：2023****** 姓名A（模型推导与报告撰写）", 14, False),
+        ("      2023****** 姓名B（交互网页与仿真实现）", 14, False),
+        ("      2023****** 姓名C（图表分析与资料整理）", 14, False),
+        ("      2023****** 姓名D（展示设计与复核）", 14, False),
+        ("指导教师：", 14, False),
+        ("二〇二六年五月", 14, False),
+    ]
+    for text, size, bold in cover:
+        paragraph = doc.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.space_after = Pt(10)
+        run = paragraph.add_run(text)
+        set_run_font(run, size=size, bold=bold, name="黑体" if bold else "宋体")
+
+    doc.add_page_break()
+
+    add_heading(doc, "摘 要", 1)
+    add_paragraph(
+        doc,
+        "本文围绕大型演唱会入场安防这一具体场景，构建了一个由随机到达、门区排队、识别报警和场内巡逻组成的高阶叙事性模拟。"
+        "观众入场过程被建模为非齐次泊松过程，安检口服务过程采用离散 M/M/c 排队近似，报警可信度用贝叶斯公式解释低基率效应，"
+        "巡逻发现异常点则转化为二维随机游走的首达时问题。交互作品允许用户调整到达集中度、安检通道数、服务效率、拥堵阈值、误报率和巡逻偏向，"
+        "并实时查看最大队列、拥堵风险、平均等待、报警后验概率、巡逻首达时间等指标。基准方案下，蒙特卡洛模拟显示最大队列超过 2500 人阈值的概率约为 "
+        f"{pct(metrics['queue']['risk_probability'])}，平均最大队列约 {metrics['queue']['max_queue_mean']:.0f} 人；识别系统在 95% 灵敏度和 0.5% 误报率下，"
+        f"报警为真实风险个体的后验概率仅约 {pct(metrics['recognition']['posterior_true_given_alert'])}。结果表明，概率模型不仅能描述平均状态，"
+        "更能揭示低概率高影响的尾部风险，为“错峰入场、通道冗余、降低误报、热点巡逻”的组合策略提供量化依据。",
+    )
+    add_paragraph(doc, "关键词：非齐次泊松过程；排队论；贝叶斯公式；随机游走；蒙特卡洛模拟；大型活动安防", first_line=False)
+
+    add_heading(doc, "目录", 1)
+    toc_items = [
+        "第一章 绪论",
+        "第二章 相关理论与模型构建",
+        "第三章 叙事性模拟设计与交互实现",
+        "第四章 模拟结果与概率解释",
+        "第五章 安防策略建议",
+        "第六章 学习反思报告",
+        "参考文献",
+        "附录（代码与运行说明）",
+    ]
+    for item in toc_items:
+        add_paragraph(doc, item, first_line=False)
+    doc.add_page_break()
+
+    add_heading(doc, "第一章 绪论", 1)
+    add_heading(doc, "1.1 研究背景", 2)
+    add_paragraph(
+        doc,
+        "大型演唱会、体育赛事和校园活动的安防压力通常集中在短时间窗口内。实际风险并不只来自总人数，而来自人群到达的波峰、"
+        "安检服务能力的随机波动、报警系统的低基率误报，以及巡逻队伍在空间中的搜索效率。若只用平均人数或静态图表描述，"
+        "很容易忽略队列突然积累、误报大量占用警力和异常点迟迟未被发现等问题。",
+    )
+    add_heading(doc, "1.2 探究目标", 2)
+    add_paragraph(
+        doc,
+        "本项目选择“大型活动安防”作为小切口，目标不是复刻真实场馆的全部复杂性，而是用概率论与随机过程中的典型工具讲清一个完整决策故事："
+        "人如何随机到达，队列如何积累，报警如何被解释，巡逻如何发现异常，最后怎样用参数调节降低风险。交互作品对应作业说明中的“高阶：叙事性模拟”，"
+        "将文字说明、动态曲线、关键指标和可调控件放在同一 Web 应用中，形成可探索的分析报告。",
+    )
+
+    add_heading(doc, "第二章 相关理论与模型构建", 1)
+    add_heading(doc, "2.1 非齐次泊松到达过程", 2)
+    add_paragraph(
+        doc,
+        "设 A(t) 表示开门后 t 分钟内到达的观众数。由于观众在开场前不同时间段的到达强度不同，本文采用非齐次泊松过程："
+        "在很短时间间隔内，到达数服从参数为该时间段强度积分的泊松分布，并假设不相交时间段的增量近似独立。",
+    )
+    add_formula(doc, "A(t+Δt)-A(t) ~ Poisson(∫[t,t+Δt] λ(u)du)")
+    add_paragraph(
+        doc,
+        "为体现真实活动中“提前入场峰”和“临近开场峰”，仿真中把 λ(t) 设为背景到达强度与两个钟形波峰的加权和，再按总观众 60000 人归一化。"
+        "“到达集中度”越高，两个峰越尖，排队系统面对的瞬时冲击越大。",
+    )
+
+    add_heading(doc, "2.2 门区排队模型", 2)
+    add_paragraph(
+        doc,
+        "安检区设置 c 个通道，单通道平均服务率为 μ 人/分钟。每分钟服务能力 S(t) 用均值 cμ 的泊松随机变量近似，队列递推如下：",
+    )
+    add_formula(doc, "Q(t+1)=max{0, Q(t)+A(t)-S(t)}")
+    add_paragraph(
+        doc,
+        "本模型重点观察三个量：最大队列 max Q(t)、平均等待时间 E[Q(t)/(cμ)]、以及最大队列超过阈值 L 的概率 P(max Q(t)>L)。"
+        "其中第三个量是典型的尾部风险指标，比单次仿真的曲线更适合用于安防冗余设计。",
+    )
+
+    add_heading(doc, "2.3 报警可信度的贝叶斯解释", 2)
+    add_paragraph(
+        doc,
+        "参考“大型活动安防”材料，设真实风险个体为 T，系统报警为 B。若风险个体占比很低，即使 P(B|T) 较高，P(T|B) 也可能不高。"
+        "这正是低基率场景下常见的贝叶斯悖论。",
+    )
+    add_formula(doc, "P(T|B)=P(B|T)P(T) / [P(B|T)P(T)+P(B|T^c)P(T^c)]")
+
+    add_heading(doc, "2.4 巡逻搜索与首达时", 2)
+    add_paragraph(
+        doc,
+        "场内巡逻被抽象为二维网格上的随机游走。巡逻队从入口或角落出发，每分钟向相邻网格移动一步；当采用“热点偏向”策略时，"
+        "移动方向以一定概率朝向高风险区域。异常点首次被任一巡逻队到达的时间记为 τ，它是随机游走的首达时。",
+    )
+    add_formula(doc, "τ = inf{t ≥ 0 : X_t = hotspot}")
+
+    add_heading(doc, "第三章 叙事性模拟设计与交互实现", 1)
+    add_heading(doc, "3.1 故事线设计", 2)
+    add_paragraph(
+        doc,
+        "交互作品按五幕展开：第一幕展示非均匀到达的人流波峰；第二幕展示服务能力不足时队列如何积累；第三幕解释报警后验概率为什么低于直觉；"
+        "第四幕把巡逻发现转化为首达时；第五幕对比基准、错峰、增开通道和组合优化。每一幕都对应一个核心概率概念，避免把图表堆叠成静态展示。",
+    )
+    add_heading(doc, "3.2 参数设置", 2)
+    add_table(
+        doc,
+        ["参数", "基准值", "含义"],
+        [
+            ["总观众数", "60000", "进入场馆的人数规模"],
+            ["开放时长", "120 分钟", "开场前两小时开始入场"],
+            ["安检通道", "36 个", "并行服务台数量"],
+            ["单通道效率", "20 人/分钟", "平均服务能力"],
+            ["拥堵阈值", "2500 人", "需启动疏导预案的队列规模"],
+            ["风险个体占比", "50/60000", "低基率报警场景"],
+            ["灵敏度 / 误报率", "95% / 0.5%", "识别系统参数"],
+            ["巡逻小组 / 热点偏向", "6 组 / 55%", "随机游走的搜索能力"],
+        ],
+    )
+    add_heading(doc, "3.3 交互作品结构", 2)
+    add_paragraph(
+        doc,
+        "网页由 HTML、CSS 和 JavaScript 三个文件组成，可离线打开。JavaScript 内部实现了伪随机数生成、泊松采样、队列递推、"
+        "蒙特卡洛重复实验、贝叶斯后验计算和巡逻首达时模拟。用户移动滑块后，所有图表和指标即时重算，形成“参数改变 → 风险响应 → 策略解释”的闭环。",
+    )
+
+    add_heading(doc, "第四章 模拟结果与概率解释", 1)
+    add_heading(doc, "4.1 基准方案的单次路径与尾部风险", 2)
+    doc.add_picture(str(figures / "arrival_queue_story.png"), width=Inches(5.9))
+    add_caption(doc, "图 1 非齐次泊松到达、平均服务能力与队列演化")
+    add_paragraph(
+        doc,
+        f"在一条固定随机路径中，最大队列为 {metrics['single_queue']['max_queue']:.0f} 人，平均等待时间约 "
+        f"{metrics['single_queue']['avg_wait']:.2f} 分钟。这条路径没有超过 2500 人阈值，但 300 次蒙特卡洛实验显示，"
+        f"最大队列超过阈值的概率为 {pct(metrics['queue']['risk_probability'])}，平均最大队列为 {metrics['queue']['max_queue_mean']:.0f} 人，"
+        f"90 分位最大队列达到 {metrics['queue']['max_queue_p90']:.0f} 人。这说明安防问题不能只看一次仿真，尾部事件才是预案设计的重点。",
+    )
+
+    add_heading(doc, "4.2 通道数与到达集中度的敏感性", 2)
+    doc.add_picture(str(figures / "queue_risk_heatmap.png"), width=Inches(5.9))
+    add_caption(doc, "图 2 不同通道数与到达集中度下的拥堵概率热力图")
+    add_paragraph(
+        doc,
+        "热力图显示，拥堵风险对到达集中度非常敏感。当观众集中在临近开场的较短窗口内，即使总人数不变，最大队列也会明显抬升。"
+        "增加通道数可以降低风险，但如果到达波峰过尖，单纯依赖通道扩容会导致资源投入较大。错峰入场和通道冗余应当配合使用。",
+    )
+
+    add_heading(doc, "4.3 报警系统中的低基率效应", 2)
+    doc.add_picture(str(figures / "bayes_alert_tradeoff.png"), width=Inches(5.9))
+    add_caption(doc, "图 3 误报率对报警后验概率和警力核查时间的影响")
+    add_paragraph(
+        doc,
+        f"基准参数下，预期真实报警 {metrics['recognition']['true_alerts']:.1f} 次，误报约 {metrics['recognition']['false_alerts']:.1f} 次，"
+        f"因此 P(真实风险个体|报警) 只有 {pct(metrics['recognition']['posterior_true_given_alert'])}。若每次误报需 2 名警员核查 20 分钟，"
+        f"单场活动会消耗约 {metrics['recognition']['review_police_hours']:.0f} 警员小时。该结果提示我们，报告系统准确率时必须同时报告基率、误报率和后验概率。",
+    )
+
+    add_heading(doc, "4.4 巡逻偏向对首达时的影响", 2)
+    doc.add_picture(str(figures / "patrol_hit_time.png"), width=Inches(5.9))
+    add_caption(doc, "图 4 近随机巡逻与热点偏向巡逻的首达时分布")
+    add_paragraph(
+        doc,
+        f"在 6 组巡逻队的基准设定下，近随机巡逻发现异常点的首达时中位数约为 {metrics['patrol_random']['median_hit_time']:.0f} 分钟，"
+        f"热点偏向巡逻的中位数约为 {metrics['patrol_smart']['median_hit_time']:.0f} 分钟，90 分位约为 {metrics['patrol_smart']['p90_hit_time']:.0f} 分钟。"
+        "这说明在空间搜索问题中，完全随机探索虽然具有覆盖性，但利用拥堵热区、入口密度和报警位置形成偏向，可以显著缩短发现时间。",
+    )
+
+    add_heading(doc, "第五章 安防策略建议", 1)
+    add_table(
+        doc,
+        ["方案", "通道数", "集中度", "拥堵概率", "平均最大队列", "平均等待", "巡逻首达中位数", "报警可信度"],
+        case_rows,
+    )
+    add_paragraph(
+        doc,
+        "从表中可以看出，错峰入场直接削弱到达峰值，在不增加硬件的情况下将拥堵概率降至接近 0；增开通道对门区排队最直接，但对误报和场内巡逻没有帮助；"
+        "组合优化同时降低到达峰、提高服务能力、减少误报并增强巡逻偏向，是最稳健的方案。实际管理中可将这些策略分层部署："
+        "先用预约入场和票面分时降低 λ(t) 的尖峰，再保留一定通道冗余处理随机波动，最后用低误报阈值和热点巡逻减少警力浪费。",
+    )
+
+    add_heading(doc, "第六章 学习反思报告", 1)
+    add_paragraph(
+        doc,
+        "本次作业最大的收获，是把课本中的随机变量和随机过程放进了一个有时间、有空间、有决策压力的故事里。最开始我们倾向于只画平均到达曲线，"
+        "但讨论后发现安防真正关心的是“最坏的那一段时间会不会失控”。因此我们把单次曲线扩展为蒙特卡洛尾部概率，理解了为什么期望值不足以代表风险。",
+    )
+    add_paragraph(
+        doc,
+        "在模型选择上，我们经历了几次取舍。真实场馆的人流受到天气、交通、票检、入口布局等因素影响，完全复现不现实。最后我们保留了四个最能体现课程知识的模块："
+        "泊松到达、排队递推、贝叶斯后验和随机游走首达时。这个“小切口”使我们能把每个环节讲清楚，也能在交互作品中让参数变化产生可解释的结果。",
+    )
+    add_paragraph(
+        doc,
+        "协作方面，模型推导、代码实现、图表解释和叙事结构需要不断对齐。例如误报率看起来只是一个很小的百分数，但放在 60000 人的低基率场景中会变成大量核查工作；"
+        "这个发现促使我们在报告中加入贝叶斯分析。通过这次项目，我们更直观地感受到概率论不仅是计算题工具，也是一种帮助公共管理进行不确定性决策的语言。",
+    )
+
+    add_heading(doc, "参考文献", 1)
+    references = [
+        "[1] Sheldon M. Ross. Introduction to Probability Models. Academic Press.",
+        "[2] Sheldon M. Ross. Stochastic Processes. Wiley.",
+        "[3] 课程参考资料：泊松过程与事件流模拟.docx.",
+        "[4] 课程参考资料：随机游走的首达时与探索效率.docx.",
+        "[5] 课程参考资料：项目主题：人脸识别技术效能的概率建模与社会影响分析——以大型活动安防为场景.docx.",
+    ]
+    for ref in references:
+        add_paragraph(doc, ref, first_line=False)
+
+    add_heading(doc, "附录（代码与运行说明）", 1)
+    add_paragraph(
+        doc,
+        "完整源代码已随报告放入 source 与 interactive 文件夹。交互作品直接打开 interactive/index.html 即可运行；"
+        "复现实验可在命令行执行：py -X utf8 source/simulation.py --output report/figures。主要文件如下：",
+    )
+    add_table(
+        doc,
+        ["文件", "作用"],
+        [
+            ["interactive/index.html", "交互作品页面结构"],
+            ["interactive/styles.css", "交互作品样式与响应式布局"],
+            ["interactive/app.js", "浏览器内的模拟、蒙特卡洛和 Canvas 图表"],
+            ["source/simulation.py", "报告图表与 metrics.json 的可复现实验脚本"],
+            ["report/figures/*.png", "报告中使用的可视化结果"],
+        ],
+    )
+    add_paragraph(
+        doc,
+        "核心队列递推伪代码：for each minute t: arrivals ~ Poisson(lambda[t]); service ~ Poisson(c*mu); "
+        "queue = max(0, queue + arrivals - service)。重复该过程多次即可估计 P(max queue > threshold)。",
+        first_line=False,
+    )
+
+    for table in doc.tables:
+        for row_idx, row in enumerate(table.rows):
+            for cell in row.cells:
+                if row_idx == 0:
+                    set_cell_shading(cell, "E8F3EF")
+
+    doc.save(output)
+    print(output)
+
+
+if __name__ == "__main__":
+    main()

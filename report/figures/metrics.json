@@ -1,0 +1,158 @@
+{
+  "scenario": {
+    "audience": 60000,
+    "minutes": 120,
+    "gates": 36,
+    "service_rate": 20.0,
+    "peak_concentration": 1.2,
+    "queue_threshold": 2500,
+    "suspect_prevalence": 0.0008333333333333334,
+    "sensitivity": 0.95,
+    "false_alarm": 0.005,
+    "patrols": 6,
+    "smart_bias": 0.55
+  },
+  "queue": {
+    "trials": 300,
+    "risk_probability": 0.26666666666666666,
+    "max_queue_mean": 2359.3633333333332,
+    "max_queue_p90": 2679.2,
+    "avg_wait_mean": 1.5504079816482215,
+    "avg_wait_p90": 1.744647788144481,
+    "risk_minutes_mean": 1.7766666666666666
+  },
+  "single_queue": {
+    "max_queue": 2065.0,
+    "avg_wait": 1.353948798568791,
+    "risk_minutes": 0.0
+  },
+  "recognition": {
+    "suspects": 50.0,
+    "true_alerts": 47.5,
+    "false_alerts": 299.75,
+    "total_alerts": 347.25,
+    "posterior_true_given_alert": 0.13678905687544995,
+    "review_police_hours": 199.83333333333334
+  },
+  "patrol_random": {
+    "median_hit_time": 12.0,
+    "p90_hit_time": 30.0,
+    "miss_probability_45min": 0.016666666666666666
+  },
+  "patrol_smart": {
+    "median_hit_time": 5.0,
+    "p90_hit_time": 8.0,
+    "miss_probability_45min": 0.0
+  },
+  "sample_patrol_hit_time": 3,
+  "sample_patrol_paths": [
+    [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        0
+      ]
+    ],
+    [
+      [
+        0,
+        7
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        2,
+        7
+      ],
+      [
+        2,
+        6
+      ]
+    ],
+    [
+      [
+        11,
+        0
+      ],
+      [
+        11,
+        1
+      ],
+      [
+        11,
+        2
+      ],
+      [
+        11,
+        3
+      ]
+    ],
+    [
+      [
+        11,
+        7
+      ],
+      [
+        11,
+        6
+      ],
+      [
+        11,
+        5
+      ],
+      [
+        11,
+        4
+      ]
+    ],
+    [
+      [
+        2,
+        0
+      ],
+      [
+        3,
+        0
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        4,
+        1
+      ]
+    ],
+    [
+      [
+        9,
+        7
+      ],
+      [
+        8,
+        7
+      ],
+      [
+        8,
+        6
+      ],
+      [
+        8,
+        5
+      ]
+    ]
+  ]
+}

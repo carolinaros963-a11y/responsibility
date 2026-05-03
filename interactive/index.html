@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>大型活动安防叙事性模拟</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">概率论与随机过程 · 高阶叙事性模拟</p>
+        <h1>大型活动安防中的随机到达、排队拥堵与巡逻发现</h1>
+        <p class="lead">
+          将一场 6 万人演唱会抽象为非齐次泊松到达、随机服务排队、贝叶斯报警和二维随机巡逻四个环节，观察参数改变如何影响安全冗余。
+        </p>
+      </div>
+      <div class="status-card">
+        <span>当前结论</span>
+        <strong id="verdict">计算中</strong>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="story-panel" aria-label="叙事步骤">
+        <div class="chapter-tabs" id="chapterTabs">
+          <button data-chapter="0" class="active">人流</button>
+          <button data-chapter="1">排队</button>
+          <button data-chapter="2">报警</button>
+          <button data-chapter="3">巡逻</button>
+          <button data-chapter="4">决策</button>
+        </div>
+        <article class="chapter">
+          <p class="chapter-kicker" id="chapterKicker">第一幕</p>
+          <h2 id="chapterTitle">人流不是匀速水龙头</h2>
+          <p id="chapterText">
+            观众到达更像随时间变化的事件流。开场前一小时和最后二十分钟形成两个峰，单位时间到达数用非齐次泊松过程近似。
+          </p>
+          <div class="formula" id="chapterFormula">N(t+Δt)-N(t) ~ Poisson(∫ λ(u)du)</div>
+        </article>
+
+        <div class="presets" aria-label="预设方案">
+          <button data-preset="baseline">基准</button>
+          <button data-preset="staggered">错峰入场</button>
+          <button data-preset="moreGates">增开安检</button>
+          <button data-preset="smartPatrol">智能巡逻</button>
+        </div>
+
+        <div class="controls">
+          <label>
+            <span>到达集中度</span>
+            <output id="peakValue">1.20</output>
+            <input id="peak" type="range" min="0.70" max="1.90" value="1.20" step="0.05" />
+          </label>
+          <label>
+            <span>安检通道数</span>
+            <output id="gatesValue">36</output>
+            <input id="gates" type="range" min="30" max="62" value="36" step="1" />
+          </label>
+          <label>
+            <span>单通道效率</span>
+            <output id="serviceValue">20.0 人/分</output>
+            <input id="service" type="range" min="14" max="28" value="20" step="0.5" />
+          </label>
+          <label>
+            <span>拥堵阈值</span>
+            <output id="thresholdValue">2500 人</output>
+            <input id="threshold" type="range" min="1500" max="7000" value="2500" step="100" />
+          </label>
+          <label>
+            <span>巡逻小组</span>
+            <output id="patrolsValue">6 组</output>
+            <input id="patrols" type="range" min="2" max="12" value="6" step="1" />
+          </label>
+          <label>
+            <span>热点偏向</span>
+            <output id="biasValue">55%</output>
+            <input id="bias" type="range" min="0.05" max="0.95" value="0.55" step="0.05" />
+          </label>
+          <label>
+            <span>误报率</span>
+            <output id="falseAlarmValue">0.50%</output>
+            <input id="falseAlarm" type="range" min="0.05" max="2.00" value="0.50" step="0.05" />
+          </label>
+        </div>
+      </section>
+
+      <section class="dashboard" aria-label="模拟结果">
+        <div class="kpi-grid">
+          <div class="kpi"><span>最大队列</span><strong id="maxQueue">--</strong><small>人</small></div>
+          <div class="kpi"><span>拥堵风险</span><strong id="riskProb">--</strong><small>超过阈值概率</small></div>
+          <div class="kpi"><span>平均等待</span><strong id="avgWait">--</strong><small>分钟</small></div>
+          <div class="kpi"><span>报警可信度</span><strong id="ppv">--</strong><small>P(真实 | 报警)</small></div>
+          <div class="kpi"><span>发现中位数</span><strong id="hitMedian">--</strong><small>分钟</small></div>
+          <div class="kpi"><span>误报核查</span><strong id="reviewHours">--</strong><small>警员小时</small></div>
+        </div>
+
+        <div class="canvas-grid">
+          <figure class="canvas-card wide">
+            <figcaption>入场事件流与队列演化</figcaption>
+            <canvas id="queueCanvas" width="1100" height="520"></canvas>
+          </figure>
+          <figure class="canvas-card">
+            <figcaption>巡逻随机游走与热点首达</figcaption>
+            <canvas id="patrolCanvas" width="560" height="440"></canvas>
+          </figure>
+          <figure class="canvas-card">
+            <figcaption>方案对比：风险概率</figcaption>
+            <canvas id="decisionCanvas" width="560" height="440"></canvas>
+          </figure>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>模型：非齐次泊松过程 · M/M/c 排队近似 · 贝叶斯后验 · 二维有偏随机游走 · 蒙特卡洛估计</span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
