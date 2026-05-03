@@ -30,6 +30,20 @@
           <button data-chapter="3">巡逻</button>
           <button data-chapter="4">决策</button>
         </div>
+
+        <div class="story-progress" aria-label="叙事进度">
+          <div class="story-progress-bar">
+            <span id="storyProgressFill"></span>
+          </div>
+          <div class="story-progress-row">
+            <small id="storyProgressText">步骤 1 / 5</small>
+            <div class="story-actions">
+              <button id="prevStep" type="button">上一步</button>
+              <button id="nextStep" type="button">下一步</button>
+              <button id="autoPlay" type="button">自动讲解</button>
+            </div>
+          </div>
+        </div>
         <article class="chapter">
           <p class="chapter-kicker" id="chapterKicker">第一幕</p>
           <h2 id="chapterTitle">人流不是匀速水龙头</h2>
@@ -87,13 +101,23 @@
 
       <section class="dashboard" aria-label="模拟结果">
         <div class="kpi-grid">
-          <div class="kpi"><span>最大队列</span><strong id="maxQueue">--</strong><small>人</small></div>
-          <div class="kpi"><span>拥堵风险</span><strong id="riskProb">--</strong><small>超过阈值概率</small></div>
-          <div class="kpi"><span>平均等待</span><strong id="avgWait">--</strong><small>分钟</small></div>
-          <div class="kpi"><span>报警可信度</span><strong id="ppv">--</strong><small>P(真实 | 报警)</small></div>
-          <div class="kpi"><span>发现中位数</span><strong id="hitMedian">--</strong><small>分钟</small></div>
-          <div class="kpi"><span>误报核查</span><strong id="reviewHours">--</strong><small>警员小时</small></div>
+          <div class="kpi" data-kpi-card="maxQueue"><span>最大队列</span><strong id="maxQueue">--</strong><small>人</small></div>
+          <div class="kpi" data-kpi-card="riskProb"><span>拥堵风险</span><strong id="riskProb">--</strong><small>超过阈值概率</small></div>
+          <div class="kpi" data-kpi-card="avgWait"><span>平均等待</span><strong id="avgWait">--</strong><small>分钟</small></div>
+          <div class="kpi" data-kpi-card="ppv"><span>报警可信度</span><strong id="ppv">--</strong><small>P(真实 | 报警)</small></div>
+          <div class="kpi" data-kpi-card="hitMedian"><span>发现中位数</span><strong id="hitMedian">--</strong><small>分钟</small></div>
+          <div class="kpi" data-kpi-card="reviewHours"><span>误报核查</span><strong id="reviewHours">--</strong><small>警员小时</small></div>
         </div>
+
+        <section class="insight-card" aria-label="关键结论">
+          <header>
+            <h3>引导式分析结论</h3>
+            <small id="chapterHint">当前聚焦：第一幕 · 人流到达</small>
+          </header>
+          <ul id="insightsList">
+            <li>正在计算当前情境的关键结论...</li>
+          </ul>
+        </section>
 
         <div class="canvas-grid">
           <figure class="canvas-card wide">

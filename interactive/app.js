@@ -75,8 +75,28 @@ const chapterEls = {
   formula: document.querySelector("#chapterFormula")
 };
 
+const storyEls = {
+  progressFill: document.querySelector("#storyProgressFill"),
+  progressText: document.querySelector("#storyProgressText"),
+  prevStep: document.querySelector("#prevStep"),
+  nextStep: document.querySelector("#nextStep"),
+  autoPlay: document.querySelector("#autoPlay"),
+  chapterHint: document.querySelector("#chapterHint"),
+  insightsList: document.querySelector("#insightsList")
+};
+
+const kpiCards = {
+  maxQueue: document.querySelector('[data-kpi-card="maxQueue"]'),
+  riskProb: document.querySelector('[data-kpi-card="riskProb"]'),
+  avgWait: document.querySelector('[data-kpi-card="avgWait"]'),
+  ppv: document.querySelector('[data-kpi-card="ppv"]'),
+  hitMedian: document.querySelector('[data-kpi-card="hitMedian"]'),
+  reviewHours: document.querySelector('[data-kpi-card="reviewHours"]')
+};
+
 let activeChapter = 0;
 let updateTimer = 0;
+let autoPlayTimer = 0;
 
 function rngFactory(seed) {
   let a = seed >>> 0;
@@ -305,6 +325,119 @@ function pct(value) {
   return `${Math.round(value * 100)}%`;
 }
 
+function renderInsights(items) {
+  storyEls.insightsList.innerHTML = "";
+  items.forEach((text) => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    storyEls.insightsList.appendChild(li);
+  });
+}
+
+function updateKpiStates(mc, rec, patrolStats) {
+  Object.values(kpiCards).forEach((el) => el.classList.remove("is-focus", "is-alert"));
+
+  if (activeChapter === 0 || activeChapter === 1) {
+    kpiCards.maxQueue.classList.add("is-focus");
+    kpiCards.riskProb.classList.add("is-focus");
+    kpiCards.avgWait.classList.add("is-focus");
+    if (mc.risk > 0.35) {
+      kpiCards.riskProb.classList.add("is-alert");
+    }
+  }
+
+  if (activeChapter === 2) {
+    kpiCards.ppv.classList.add("is-focus");
+    kpiCards.reviewHours.classList.add("is-focus");
+    if (rec.ppv < 0.18) {
+      kpiCards.ppv.classList.add("is-alert");
+      kpiCards.reviewHours.classList.add("is-alert");
+    }
+  }
+
+  if (activeChapter === 3) {
+    kpiCards.hitMedian.classList.add("is-focus");
+    if (patrolStats.median > 15) {
+      kpiCards.hitMedian.classList.add("is-alert");
+    }
+  }
+
+  if (activeChapter === 4) {
+    kpiCards.riskProb.classList.add("is-focus");
+    kpiCards.ppv.classList.add("is-focus");
+    kpiCards.hitMedian.classList.add("is-focus");
+  }
+}
+
+function buildInsights(p, queue, mc, rec, patrolStats) {
+  const chapterLabel = `${chapters[activeChapter].kicker} · ${chapters[activeChapter].title}`;
+  storyEls.chapterHint.textContent = `当前聚焦：${chapterLabel}`;
+
+  if (activeChapter === 0) {
+    return [
+      `当前设定下，峰值到达强度约触发最大队列 ${formatInt(queue.maxQueue)} 人。`,
+      `当到达集中度为 ${p.peak.toFixed(2)} 时，拥堵风险约为 ${pct(mc.risk)}。`,
+      "结论：先控制入场波峰（预约/分时）通常比事后排队疏导更有效。"
+    ];
+  }
+
+  if (activeChapter === 1) {
+    return [
+      `安检总服务能力约为 ${formatInt(p.gates * p.service)} 人/分钟，平均等待 ${queue.avgWait.toFixed(2)} 分钟。`,
+      `阈值 ${formatInt(p.threshold)} 人下，超过阈值概率约 ${pct(mc.risk)}。`,
+      "结论：通道扩容能明显降风险，但若到达波峰过尖，仍需错峰配合。"
+    ];
+  }
+
+  if (activeChapter === 2) {
+    return [
+      `误报率 ${(p.falseAlarm * 100).toFixed(2)}% 下，报警可信度约 ${pct(rec.ppv)}。`,
+      `预估误报核查成本约 ${formatInt(rec.reviewHours)} 警员小时。`,
+      "结论：低基率场景应重点优化误报率与核查流程，而不只看灵敏度。"
+    ];
+  }
+
+  if (activeChapter === 3) {
+    return [
+      `当前巡逻中位首达时间约 ${Math.round(patrolStats.median)} 分钟。`,
+      `90% 情形可在 ${Math.round(patrolStats.p90)} 分钟内发现热点异常。`,
+      "结论：提升热点偏向与巡逻组数可显著缩短关键发现时间。"
+    ];
+  }
+
+  return [
+    `当前综合态势：拥堵风险 ${pct(mc.risk)}，报警可信度 ${pct(rec.ppv)}。`,
+    `巡逻首达中位数 ${Math.round(patrolStats.median)} 分钟，误报核查约 ${formatInt(rec.reviewHours)} 警员小时。`,
+    "结论：组合策略（错峰 + 通道冗余 + 降误报 + 热点巡逻）最稳健。"
+  ];
+}
+
+function updateStoryProgress() {
+  const progress = ((activeChapter + 1) / chapters.length) * 100;
+  storyEls.progressFill.style.width = `${progress}%`;
+  storyEls.progressText.textContent = `步骤 ${activeChapter + 1} / ${chapters.length}`;
+}
+
+function stopAutoPlay() {
+  window.clearInterval(autoPlayTimer);
+  autoPlayTimer = 0;
+  storyEls.autoPlay.classList.remove("active");
+  storyEls.autoPlay.textContent = "自动讲解";
+}
+
+function startAutoPlay() {
+  stopAutoPlay();
+  storyEls.autoPlay.classList.add("active");
+  storyEls.autoPlay.textContent = "停止讲解";
+  autoPlayTimer = window.setInterval(() => {
+    if (activeChapter >= chapters.length - 1) {
+      stopAutoPlay();
+      return;
+    }
+    setChapter(activeChapter + 1, false);
+  }, 3200);
+}
+
 function drawLine(ctx, values, area, maxY, color, width = 3) {
   ctx.beginPath();
   values.forEach((v, i) => {
@@ -522,9 +655,15 @@ function runModel() {
   drawQueue(document.querySelector("#queueCanvas"), p, queue);
   drawPatrol(document.querySelector("#patrolCanvas"), sample, patrolStats);
   drawDecision(document.querySelector("#decisionCanvas"), alternatives);
+
+  updateKpiStates(mc, rec, patrolStats);
+  renderInsights(buildInsights(p, queue, mc, rec, patrolStats));
 }
 
-function setChapter(idx) {
+function setChapter(idx, fromUser = true) {
+  if (fromUser) {
+    stopAutoPlay();
+  }
   activeChapter = idx;
   const data = chapters[idx];
   chapterEls.kicker.textContent = data.kicker;
@@ -534,6 +673,7 @@ function setChapter(idx) {
   document.querySelectorAll("#chapterTabs button").forEach((btn) => {
     btn.classList.toggle("active", Number(btn.dataset.chapter) === idx);
   });
+  updateStoryProgress();
   scheduleUpdate();
 }
 
@@ -557,12 +697,33 @@ document.querySelectorAll("#chapterTabs button").forEach((btn) => {
   btn.addEventListener("click", () => setChapter(Number(btn.dataset.chapter)));
 });
 
+storyEls.prevStep.addEventListener("click", () => {
+  if (activeChapter > 0) {
+    setChapter(activeChapter - 1);
+  }
+});
+
+storyEls.nextStep.addEventListener("click", () => {
+  if (activeChapter < chapters.length - 1) {
+    setChapter(activeChapter + 1);
+  }
+});
+
+storyEls.autoPlay.addEventListener("click", () => {
+  if (autoPlayTimer) {
+    stopAutoPlay();
+    return;
+  }
+  startAutoPlay();
+});
+
 document.querySelectorAll(".presets button").forEach((btn) => {
   btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
 });
 
 Object.values(controls).forEach((control) => {
   control.addEventListener("input", () => {
+    stopAutoPlay();
     document.querySelectorAll(".presets button").forEach((btn) => btn.classList.remove("active"));
     scheduleUpdate();
   });

@@ -134,6 +134,71 @@ h1 {
   font-weight: 700;
 }
 
+.story-progress {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fcf8ef;
+}
+
+.story-progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #e9e3d5;
+  overflow: hidden;
+}
+
+.story-progress-bar span {
+  display: block;
+  height: 100%;
+  width: 20%;
+  background: linear-gradient(90deg, #0f766e, #2f7d4f);
+  transition: width 0.25s ease;
+}
+
+.story-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.story-progress-row small {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.story-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.story-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fffdfa;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.story-actions button:hover {
+  border-color: var(--teal);
+}
+
+.story-actions button.active {
+  border-color: var(--teal);
+  background: #dff3ee;
+  color: #064e4a;
+  font-weight: 700;
+}
+
 .chapter {
   padding: 20px 2px 18px;
   border-bottom: 1px solid var(--line);
@@ -215,6 +280,16 @@ h1 {
   padding: 14px;
 }
 
+.kpi.is-focus {
+  border-color: #9fd7cd;
+  box-shadow: 0 12px 26px rgba(15, 118, 110, 0.16);
+}
+
+.kpi.is-alert {
+  border-color: #e7b5ad;
+  background: #fff8f6;
+}
+
 .kpi span,
 .kpi small {
   display: block;
@@ -235,6 +310,40 @@ h1 {
 .kpi small {
   font-size: 12px;
   line-height: 1.35;
+}
+
+.insight-card {
+  padding: 14px 16px;
+  background: #fffdfa;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(23, 32, 42, 0.05);
+}
+
+.insight-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.insight-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.insight-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.insight-card ul {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .canvas-grid {
@@ -312,6 +421,19 @@ canvas {
   .canvas-grid,
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .story-progress-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .story-actions {
+    width: 100%;
+  }
+
+  .story-actions button {
+    flex: 1;
   }
 
   .kpi {
