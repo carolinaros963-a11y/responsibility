@@ -35,7 +35,7 @@ const presets = {
   baseline: { peak: 1.20, gates: 36, service: 20, threshold: 2500, patrols: 6, bias: 0.55, falseAlarm: 0.50 },
   staggered: { peak: 0.82, gates: 36, service: 20, threshold: 2500, patrols: 6, bias: 0.55, falseAlarm: 0.50 },
   moreGates: { peak: 1.20, gates: 44, service: 20, threshold: 2500, patrols: 6, bias: 0.55, falseAlarm: 0.50 },
-  smartPatrol: { peak: 1.05, gates: 42, service: 21, threshold: 2500, patrols: 8, bias: 0.85, falseAlarm: 0.22 }
+  combo: { peak: 0.82, gates: 44, service: 21, threshold: 2500, patrols: 8, bias: 0.85, falseAlarm: 0.22 }
 };
 
 const controls = {
@@ -454,15 +454,15 @@ function drawLine(ctx, values, area, maxY, color, width = 3) {
 function setupCanvas(canvas) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#fffaf2";
+  ctx.fillStyle = "rgba(10, 15, 38, 0.85)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.font = "22px Microsoft YaHei, Segoe UI, sans-serif";
   ctx.textBaseline = "middle";
   return ctx;
 }
 
-function drawAxis(ctx, area, label, color = "#5d6673") {
-  ctx.strokeStyle = "#d7ccb8";
+function drawAxis(ctx, area, label, color = "#94a3b8") {
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
   ctx.lineWidth = 1;
   ctx.strokeRect(area.x, area.y, area.w, area.h);
   ctx.fillStyle = color;
@@ -482,7 +482,7 @@ function drawQueue(canvas, p, result) {
   drawAxis(ctx, bottom, "等待队列");
 
   const capacityY = top.y + top.h - (capacity / maxArrival) * top.h;
-  ctx.strokeStyle = "#2f7d4f";
+  ctx.strokeStyle = "#2dd4bf";
   ctx.lineWidth = 3;
   ctx.setLineDash([10, 8]);
   ctx.beginPath();
@@ -491,11 +491,11 @@ function drawQueue(canvas, p, result) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  drawLine(ctx, result.arrivals, top, maxArrival, "#245f9d", activeChapter === 0 ? 4 : 2.5);
-  drawLine(ctx, result.queue, bottom, maxQueue, "#c76528", activeChapter === 1 ? 4 : 2.5);
+  drawLine(ctx, result.arrivals, top, maxArrival, "#818cf8", activeChapter === 0 ? 4 : 2.5);
+  drawLine(ctx, result.queue, bottom, maxQueue, "#fb923c", activeChapter === 1 ? 4 : 2.5);
 
   const thresholdY = bottom.y + bottom.h - (p.threshold / maxQueue) * bottom.h;
-  ctx.strokeStyle = "#a2372a";
+  ctx.strokeStyle = "#fb7185";
   ctx.setLineDash([9, 7]);
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -504,7 +504,7 @@ function drawQueue(canvas, p, result) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = "rgba(199, 101, 40, 0.16)";
+  ctx.fillStyle = "rgba(251, 146, 60, 0.08)";
   ctx.beginPath();
   result.queue.forEach((v, i) => {
     const x = bottom.x + (i / (result.queue.length - 1)) * bottom.w;
@@ -516,18 +516,18 @@ function drawQueue(canvas, p, result) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#245f9d";
+  ctx.fillStyle = "#818cf8";
   ctx.fillRect(top.x + top.w - 260, top.y + 14, 18, 5);
-  ctx.fillStyle = "#2f7d4f";
+  ctx.fillStyle = "#2dd4bf";
   ctx.fillRect(top.x + top.w - 260, top.y + 42, 18, 5);
-  ctx.fillStyle = "#17202a";
+  ctx.fillStyle = "#cbd5e1";
   ctx.font = "17px Microsoft YaHei, Segoe UI, sans-serif";
   ctx.fillText("到达人数", top.x + top.w - 232, top.y + 17);
   ctx.fillText("平均服务能力", top.x + top.w - 232, top.y + 45);
-  ctx.fillStyle = "#a2372a";
+  ctx.fillStyle = "#fb7185";
   ctx.fillText(`阈值 ${formatInt(p.threshold)} 人`, bottom.x + bottom.w - 180, thresholdY - 16);
 
-  ctx.fillStyle = "#5d6673";
+  ctx.fillStyle = "#64748b";
   ctx.font = "16px Microsoft YaHei, Segoe UI, sans-serif";
   ctx.fillText("0", bottom.x - 20, bottom.y + bottom.h + 28);
   ctx.fillText("60", bottom.x + bottom.w / 2 - 12, bottom.y + bottom.h + 28);
@@ -548,16 +548,13 @@ function drawPatrol(canvas, sample, patrolStats) {
       const dx = x - sample.target.x;
       const dy = y - sample.target.y;
       const heat = Math.exp(-0.22 * (dx * dx + dy * dy));
-      const red = Math.round(250 - 45 * heat);
-      const green = Math.round(248 - 120 * heat);
-      const blue = Math.round(238 - 150 * heat);
-      ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+      ctx.fillStyle = `rgba(129, 140, 248, ${0.04 + heat * 0.22})`;
       ctx.fillRect(startX + x * cell, startY + y * cell, cell - 1, cell - 1);
     }
   }
 
   sample.paths.forEach((path, idx) => {
-    const palette = ["#245f9d", "#0f766e", "#c76528", "#7c3aed", "#a2372a", "#2f7d4f", "#334155", "#be185d"];
+    const palette = ["#818cf8", "#2dd4bf", "#fb923c", "#a78bfa", "#fb7185", "#34d399", "#38bdf8", "#f472b6"];
     ctx.strokeStyle = palette[idx % palette.length];
     ctx.lineWidth = 3;
     ctx.globalAlpha = 0.78;
@@ -574,15 +571,15 @@ function drawPatrol(canvas, sample, patrolStats) {
 
   const targetX = startX + sample.target.x * cell + cell / 2;
   const targetY = startY + sample.target.y * cell + cell / 2;
-  ctx.fillStyle = "#a2372a";
+  ctx.fillStyle = "#fb7185";
   ctx.beginPath();
   ctx.arc(targetX, targetY, Math.max(8, cell * 0.22), 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#fffdfa";
+  ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.fillStyle = "#17202a";
+  ctx.fillStyle = "#f8fafc";
   ctx.font = "18px Microsoft YaHei, Segoe UI, sans-serif";
   ctx.fillText(`样本首达：${sample.hitTime} 分钟`, 34, canvas.height - 42);
   ctx.fillText(`90% 情形不超过：${Math.round(patrolStats.p90)} 分钟`, 34, canvas.height - 18);
@@ -602,11 +599,12 @@ function drawDecision(canvas, alternatives) {
     const y = area.y + area.h - h;
     ctx.fillStyle = item.color;
     ctx.fillRect(x, y, barW, h);
-    ctx.fillStyle = "#17202a";
+    ctx.fillStyle = "#f8fafc";
     ctx.font = "20px Microsoft YaHei, Segoe UI, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(pct(item.risk), x + barW / 2, y - 16);
     ctx.font = "16px Microsoft YaHei, Segoe UI, sans-serif";
+    ctx.fillStyle = "#cbd5e1";
     const words = item.label.split("");
     words.forEach((ch, idx) => ctx.fillText(ch, x + barW / 2, area.y + area.h + 22 + idx * 17));
   });
@@ -624,10 +622,10 @@ function runModel() {
   const sample = patrolOnce(p.patrols, p.bias, 990000);
 
   const altParams = [
-    { label: "当前", color: "#245f9d", params: p },
-    { label: "错峰", color: "#0f766e", params: { ...p, peak: Math.max(0.70, p.peak * 0.72) } },
-    { label: "加通道", color: "#c76528", params: { ...p, gates: Math.min(62, p.gates + 8) } },
-    { label: "组合", color: "#2f7d4f", params: { ...p, peak: Math.max(0.70, p.peak * 0.72), gates: Math.min(62, p.gates + 8), bias: Math.min(0.95, p.bias + 0.20) } }
+    { label: "当前", color: "#818cf8", params: p },
+    { label: "错峰", color: "#2dd4bf", params: { ...p, peak: Math.max(0.70, p.peak * 0.72) } },
+    { label: "加通道", color: "#fb923c", params: { ...p, gates: Math.min(62, p.gates + 8) } },
+    { label: "组合", color: "#4ade80", params: { ...p, peak: Math.max(0.70, p.peak * 0.72), gates: Math.min(62, p.gates + 8), bias: Math.min(0.95, p.bias + 0.20) } }
   ];
   const alternatives = altParams.map((item, idx) => ({
     label: item.label,

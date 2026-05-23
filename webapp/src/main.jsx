@@ -110,10 +110,10 @@ function simulateQueue(p, seed) {
   return { arrivals, queue, maxQueue: Math.max(...queue), avgWait: ww / w };
 }
 
-function monteCarloQueue(p, trials = 140) {
+function monteCarloQueue(p, trials = 150, seed = 440000) {
   const vals = [], waits = [];
   for (let i = 0; i < trials; i++) {
-    const r = simulateQueue(p, 300000 + i);
+    const r = simulateQueue(p, seed + i);
     vals.push(r.maxQueue);
     waits.push(r.avgWait);
   }
@@ -166,9 +166,9 @@ function patrolOnce(p, seed) {
   return { hit: 90, paths, target, width: W, height: H };
 }
 
-function monteCarloPatrol(p, trials = 160) {
+function monteCarloPatrol(p, trials = 180, seed = 880000) {
   const times = [];
-  for (let i = 0; i < trials; i++) times.push(patrolOnce(p, 700000 + i).hit);
+  for (let i = 0; i < trials; i++) times.push(patrolOnce(p, seed + i).hit);
   times.sort((a, b) => a - b);
   return { median: percentile(times, 0.5), p90: percentile(times, 0.9), miss45: times.filter((t) => t > 45).length / trials };
 }
