@@ -58,8 +58,8 @@ def add_formula(doc, text):
     paragraph = doc.add_paragraph()
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.line_spacing = 1.5
-    run = paragraph.add_run(text)
-    set_run_font(run, size=12, name="宋体")
+    run = paragraph.add_run(f"<eq>{text}</eq>")
+    set_run_font(run, size=12, name="Cambria Math")
     return paragraph
 
 
@@ -238,67 +238,98 @@ def main():
 
     # ── 第二章 模型构建 ─────────────────────────────────────────────────────
     add_heading(doc, "第二章 相关理论与模型构建", 1)
+    
     add_heading(doc, "2.1 非齐次泊松到达过程", 2)
     add_paragraph(
         doc,
-        "设 A(t) 表示开门后第 t 分钟的新到达观众数。由于观众在开场前的不同时间段到达强度显著不同，"
-        "本文采用非齐次泊松过程（NHPP）建模：在足够短的时间间隔 Δt 内，"
-        "到达数服从参数为该时段强度积分的泊松分布，且不相交时间段的增量相互独立。",
+        "在实际大型活动中，观众到达大门的时间分布并不是均匀的，而是随着开场时间的临近呈现出强烈的波动性与时间相关性。"
+        "为了精确刻画这一非平稳随机过程，本项目采用非齐次泊松过程（Non-homogeneous Poisson Process, NHPP）进行建模。"
+        "设 A(t) 为从开门（t=0）到第 t 分钟累计到达的观众总数。由于到达率随时间变化，我们定义一个随时间变化的时变强度函数 λ(t) ≥ 0。"
+        "根据非齐次泊松过程的数学定义，在任意时间区间 (t_1, t_2] 内，到达人数增量服从泊松分布，其概率质量函数为：",
     )
-    add_formula(doc, "A(t+Δt) − A(t) ～ Poisson( ∫[t, t+Δt] λ(u) du )")
+    add_formula(doc, "P(N(t_2) - N(t_1) = k) = ((Λ(t_1, t_2))^k · e^(-Λ(t_1, t_2))) / (k!)   (k = 0, 1, 2, ...)")
     add_paragraph(
         doc,
-        "仿真中将强度函数 λ(t) 设为背景常量与两个高斯波峰（早到峰与临场峰）的加权叠加，"
-        "再按总观众 60000 人归一化。'到达集中度'参数控制两个波峰的尖锐程度："
-        "集中度越高，波峰越窄，排队系统在短时间内承受的瞬时压力越大，"
-        "这正是错峰入场能够有效降低拥堵风险的理论依据。",
+        "其中，累计到达人数的期望值（即均值积分）为：",
+    )
+    add_formula(doc, "Λ(t_1, t_2) = ∫_(t_1)^(t_2) λ(u) du")
+    add_paragraph(
+        doc,
+        "且在不重叠的时间区间内，新到达的人数增量相互独立。在本项目中，为了模拟演唱会前观众的到达特征（包含早到峰和临场峰），"
+        "我们将强度函数 λ(t) 构造为背景常数与两个高斯钟形分布（双峰分布）的加权叠加：",
+    )
+    add_formula(doc, "λ(t) = C · [ λ_0 + γ · ( e^(-0.5 · ((t-μ_1)/σ_1)^2) + 0.72 · e^(-0.5 · ((t-μ_2)/σ_2)^2) ) ]")
+    add_paragraph(
+        doc,
+        "其中背景强度 λ₀ = 0.22，到达集中度为 γ，早到峰均值 μ₁ = 68 分钟，标准差 σ₁ = 18 分钟；"
+        "临场峰均值 μ₂ = 102 分钟，标准差 σ₂ = 9 分钟。归一化系数 C 用于确保在 t = 120 分钟时总观众数期望值为 60000，"
+        "即积分约束条件。系统模拟时，采用 Lewis & Shedler (1979) 的接受-拒绝减薄算法（Thinning Algorithm）生成随机到达路径，"
+        "从而精确复现非平稳泊松增量的物理性质。",
     )
 
     add_heading(doc, "2.2 门区排队模型（离散 M/M/c 近似）", 2)
     add_paragraph(
         doc,
-        "安检区设置 c 个通道，单通道平均服务率为 μ 人/分钟，因此每分钟整体服务能力均值为 cμ。"
-        "实际服务量受到随机波动的影响，用均值为 cμ 的泊松随机变量 S(t) 近似。队列递推关系为：",
+        "安检区设置 c 个并行通道，单通道平均服务率为 μ 人/分钟。如果使用经典的连续时间 M_t/M/c 排队模型，"
+        "描述系统瞬时队长概率分布 P_n(t) = P(Q(t) = n) 的是一组无穷维一阶线性微分方程组（即 Kolmogorov 向前方程）：",
     )
-    add_formula(doc, "Q(t+1) = max{ 0,  Q(t) + A(t) − S(t) }")
+    add_formula(doc, "(dP_0(t))/(dt) = -λ(t)P_0(t) + μ P_1(t)")
+    add_formula(doc, "(dP_n(t))/(dt) = λ(t)P_(n-1)(t) - (λ(t) + n μ)P_n(t) + (n+1)μ P_(n+1)(t)   (1 ≤ n < c)")
+    add_formula(doc, "(dP_n(t))/(dt) = λ(t)P_(n-1)(t) - (λ(t) + c μ)P_n(t) + c μ P_(n+1)(t)   (n ≥ c)")
     add_paragraph(
         doc,
-        "本模型重点观察三个衍生量：最大队列 max Q(t) 反映瞬时拥堵峰值；"
-        "加权平均等待时间 E[Q(t)/(cμ)] 衡量用户体验；"
-        "最大队列超过阈值 L 的概率 P(max Q(t) > L) 是典型的尾部风险指标，"
-        "只有借助蒙特卡洛多次重复才能可靠估计，这也是单次仿真不足以支撑安防决策的根本原因。",
+        "该系统在到达率 λ(t) 随时间变化时极难解析求解。为了计算可行性并支持实时队长演化，我们将系统在时间轴上离散化（步长 Δt = 1 分钟）。"
+        "设第 t 分钟到达数为 A(t) ~ Poisson(λ(t)Δt)，系统在该分钟的最大服务潜力为 S(t) ~ Poisson(cμΔt)。"
+        "则队长的迭代关系为：",
+    )
+    add_formula(doc, "Q(t+1) = max(0, Q(t) + A(t) - S(t))")
+    add_paragraph(
+        doc,
+        "该公式描述了一个在 0 处具有反射边界的非齐次一维随机游走。为了度量系统风险，我们通过 300 次蒙特卡洛独立模拟"
+        "来计算尾部拥堵风险概率 P(max Q(t) > L)，以作为安全管理决策的依据。",
     )
 
     add_heading(doc, "2.3 报警可信度的贝叶斯解释", 2)
     add_paragraph(
         doc,
-        "设 T 表示'该个体为真实风险人员'，B 表示'识别系统发出报警'。"
-        "当风险个体基率 P(T) 很低时，即使灵敏度 P(B|T) 较高，"
-        "报警的后验概率 P(T|B) 也可能远低于直觉预期——这是低基率场景下的贝叶斯悖论。"
-        "利用全概率公式展开分母得：",
+        "设 T 表示“该个体为真实风险人员”，B 表示“系统发出报警”。"
+        "在低基率场景下，即使灵敏度较高，报警的后验概率也远低于直觉。应用贝叶斯公式得：",
     )
-    add_formula(doc, "P(T|B) = P(B|T)·P(T)  /  [ P(B|T)·P(T) + P(B|T̄)·P(T̄) ]")
+    add_formula(doc, "P(T|B) = (P(B|T) · P(T)) / (P(B|T) · P(T) + P(B|T̄) · P(T̄))")
     add_paragraph(
         doc,
-        f"以基准参数为例：P(T) = 50/60000 ≈ 0.083%，P(B|T) = 95%，P(B|T̄) = 0.5%，"
-        f"代入得 P(T|B) ≈ {pct(metrics['recognition']['posterior_true_given_alert'])}。"
-        "这意味着绝大多数报警来自误报，核查压力远超预期。"
-        "降低误报率是提升后验概率最有效的手段，其效果远优于单纯提高灵敏度。",
+        "若总观众数 N = 60000，风险个体数 N_T = 50，则先验概率 P(T) = 50/60000 ≈ 0.0833%。"
+        "系统灵敏度 α = P(B|T) = 95%，误报率 β = P(B|T̄) = 0.5%。代入计算：",
+    )
+    add_formula(doc, "P(T|B) = (0.95 × 0.000833) / (0.95 × 0.000833 + 0.005 × 0.999167) ≈ 13.7%")
+    add_paragraph(
+        doc,
+        "这意味着报警中绝大多数是误报。设每次误报需派遣 k = 2 名警员，核查耗时 t_check = 20 分钟（即 1/3 小时），"
+        "则整场活动因误报带来的警力核查成本（警员小时）计算为：",
+    )
+    add_formula(doc, "H_(review) = E[N_(false)] × k × (t_check/60) = (N - N_T) · β × 2 × (20/60) ≈ 199.8 警员小时")
+    add_paragraph(
+        doc,
+        "公式解释了低基率效应下警力浪费的根本原因，并证明降低误报率的边际收益远高于提升灵敏度。",
     )
 
     add_heading(doc, "2.4 巡逻搜索与随机游走首达时", 2)
     add_paragraph(
         doc,
-        "场内巡逻被抽象为二维网格（12×8 格）上的随机游走。"
-        "多支巡逻队从不同角落出发，每分钟向四邻格随机或偏向移动一步；"
-        "采用热点偏向策略时，以概率 p 向目标格方向移动，以 1-p 完全随机移动。"
-        "异常点首次被任一巡逻队到达的时间记为首达时 τ：",
+        "将场馆内部抽象为 W × H （12×8）的二维网格，N_P 支独立的巡逻队初始位置分布在入口和角落。"
+        "设目标异常事件位于网格 x* = (8, 5)。首次被任一巡逻小组发现的时间定义为首达时随机变量 τ：",
     )
-    add_formula(doc, "τ = inf{ t ≥ 0 : X_t = hotspot }")
+    add_formula(doc, "τ = inf { t ≥ 0 : ∃ i ∈ {1, 2, ..., N_P}, X_i(t) = x* }")
     add_paragraph(
         doc,
-        "首达时的分布体现了搜索效率的随机性：热点偏向在减少均值的同时也会压缩分布的右尾，"
-        "这对安防场景'及时发现异常'的目标比均值本身更具实践意义。",
+        "每支队伍以偏向度 p （曼哈顿距离减小方向）或以 1-p 随机进行网格移动，其位置状态转移满足马尔可夫链性质。"
+        "单支队伍的期望首达时间 v(x) = E[τ | X_0 = x] 满足如下离散差分方程系统（泊松方程）：",
+    )
+    add_formula(doc, "v(x*) = 0,   v(x) = 1 + ∑_(y ∈ S) P(x, y) v(y)   (∀ x ≠ x*)")
+    add_paragraph(
+        doc,
+        "多支队伍独立搜索时，相当于多个独立过程的竞争危险率。偏向度 p 可以改变转移矩阵的谱性质，"
+        "不仅压缩了首达时间的中位数，也大幅缩短了其 90% 分位的右尾风险。",
     )
 
     # ── 第三章 交互实现 ─────────────────────────────────────────────────────
@@ -525,20 +556,20 @@ def main():
         "也是一种帮助公共管理进行不确定性决策的语言。",
     )
 
-    # ── 参考文献 ─────────────────────────────────────────────────────────────
+    # ── 参考文献 ─────────────────────────────────────────────────────
     add_heading(doc, "参考文献", 1)
     references = [
-        "[1] Sheldon M. Ross. Introduction to Probability Models (12th ed.). Academic Press, 2019.",
-        "[2] Sheldon M. Ross. Stochastic Processes (2nd ed.). Wiley, 1996.",
-        "[3] D. Gross, J. F. Shortle, J. M. Thompson, C. M. Harris. Fundamentals of Queueing Theory (4th ed.). Wiley, 2008.",
-        "[4] 课程参考资料：泊松过程与事件流模拟.docx.",
-        "[5] 课程参考资料：随机游走的首达时与探索效率.docx.",
-        "[6] 课程参考资料：项目主题：人脸识别技术效能的概率建模与社会影响分析——以大型活动安防为场景.docx.",
+        "[1] Ross, S. M. (2019). Introduction to Probability Models (12th ed.). Academic Press.",
+        "[2] Lewis, P. A. W., & Shedler, G. S. (1979). Simulation of nonhomogeneous Poisson processes by thinning. Naval Research Logistics Quarterly, 26(3), 403-413.",
+        "[3] Gilliam, R. R. (1979). An Application of Queueing Theory to Airport Passenger Security Screening. Interfaces, 9(4), 117-123.",
+        "[4] Zhang, Z. G., Luh, H. P., & Wang, C. H. (2011). Modeling Security-Check Queues. Management Science, 57(11), 1979-1995.",
+        "[5] Axelsson, S. (2000). The base-rate fallacy and the difficulty of intrusion detection. ACM Transactions on Information and System Security (TISSEC), 3(3), 186-205.",
+        "[6] Lovász, L. (1993). Walks on graphs: A survey. Combinatorics, Paul erdos is eighty, 2(1), 1-46.",
     ]
     for ref in references:
         add_paragraph(doc, ref, first_line=False)
 
-    # ── 附录 ─────────────────────────────────────────────────────────────────
+        # ── 附录 ─────────────────────────────────────────────────────────────────
     add_heading(doc, "附录（代码与运行说明）", 1)
     add_paragraph(
         doc,
