@@ -170,13 +170,13 @@ def monte_carlo_patrol(
 
 
 def make_risk_grid(base: Scenario, output: Path) -> None:
-    gates_values = np.array([34, 38, 42, 46, 50, 54, 58])
+    gates_values = np.array([32, 33, 34, 35, 36, 37, 38])
     peak_values = np.array([0.80, 1.00, 1.20, 1.40, 1.60, 1.80])
     grid = np.zeros((len(peak_values), len(gates_values)))
     for i, peak in enumerate(peak_values):
         for j, gates in enumerate(gates_values):
             s = Scenario(**{**asdict(base), "gates": int(gates), "peak_concentration": float(peak)})
-            mc = monte_carlo_queue(s, trials=90, seed=303000 + i * 100 + j)
+            mc = monte_carlo_queue(s, trials=300, seed=202405)
             grid[i, j] = mc["risk_probability"]
 
     fig, ax = plt.subplots(figsize=(8.2, 4.8), dpi=170)
